@@ -84,8 +84,10 @@ WORKDIR /home/isaac-sim/PX4-Autopilot
 # Spike errata #9 — modern pip rejects `>=N.M.*` in requirements.
 RUN sed -i 's/>=\([0-9.]*\)\.\*/>=\1/g' Tools/setup/requirements.txt
 # Spike errata #10 — PX4 uses em.RAW_OPT which empy 4.x removed.
-RUN pip3 install --user "empy<4"
-RUN pip3 install --user -r Tools/setup/requirements.txt
+# --break-system-packages: base image is Ubuntu 24.04 / Python 3.12, which
+# enforces PEP 668. Spike's host build worked on 22.04/3.10 without this flag.
+RUN pip3 install --user --break-system-packages "empy<4"
+RUN pip3 install --user --break-system-packages -r Tools/setup/requirements.txt
 # Build SITL binary only (no model arg — `make px4_sitl_default none_iris`
 # triggers respawn loop per spike errata #11).
 RUN make px4_sitl_default
@@ -99,7 +101,7 @@ RUN cd /isaac-sim/extsUser && \
     ln -s /isaac-sim/extsUser/PegasusSimulator/extensions/pegasus.simulator /isaac-sim/extsUser/pegasus.simulator
 
 # MAVSDK Python — pinned to spike's verified version.
-RUN pip3 install --user mavsdk==3.15.3
+RUN pip3 install --user --break-system-packages mavsdk==3.15.3
 
 # Spike helper scripts available at a stable path inside the container.
 USER root
