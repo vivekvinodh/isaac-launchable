@@ -70,6 +70,11 @@ RUN apt update && apt install -y --no-install-recommends \
         python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
+# Upstream's `mkdir -p /home/isaac-sim/.cache/ov` creates the parent as root,
+# and their subsequent `chown -R isaac-sim` only targets specific subpaths.
+# Without this fix, `git clone` as isaac-sim hits "Permission denied" in $HOME.
+RUN chown isaac-sim:isaac-sim /home/isaac-sim
+
 USER isaac-sim
 WORKDIR /home/isaac-sim
 
