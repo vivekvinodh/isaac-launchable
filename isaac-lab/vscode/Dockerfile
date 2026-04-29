@@ -54,6 +54,53 @@ RUN chown -R isaac-sim /workspace /home/isaac-sim/.cache/ov /home/isaac-sim/.loc
 RUN cp /root/.bashrc /isaac-sim/.root-bashrc
 RUN echo 'source $HOME/.root-bashrc' >> /isaac-sim/.bashrc
 
+# === Phase 2 — PX4 + Pegasus + MAVSDK + helper scripts ===
+# See infrastructure/launchable/DESIGN-NOTES.md in the spike repo for design rationale.
+ENV DEBIAN_FRONTEND=noninteractive
+
+# PX4 SITL build deps (build-essential + cmake + git already installed above).
+RUN apt update && apt install -y --no-install-recommends \
+        ninja-build \
+        libxml2-dev \
+        libxml2-utils \
+        libxslt-dev \
+        libtool \
+        python3-pip \
+        python3-dev \
+        python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+USER isaac-sim
+WORKDIR /home/isaac-sim
+
+RUN git clone --branch v1.14.3 --recursive --depth 1 https://github.com/PX4/PX4-Autopilot.git
+
+WORKDIR /home/isaac-sim/PX4-Autopilot
+# Spike errata #9 — modern pip rejects `>=N.M.*` in requirements.
+RUN sed -i 's/>=\([0-9.]*\)\.\*/>=\1/g' Tools/setup/requirements.txt
+# Spike errata #10 — PX4 uses em.RAW_OPT which empy 4.x removed.
+RUN pip3 install --user "empy<4"
+RUN pip3 install --user -r Tools/setup/requirements.txt
+# Build SITL binary only (no model arg — `make px4_sitl_default none_iris`
+# triggers respawn loop per spike errata #11).
+RUN make px4_sitl_default
+
+# Pegasus v5.1.0 — clone into kit's auto-discovery path.
+USER root
+RUN mkdir -p /isaac-sim/extsUser && chown isaac-sim:isaac-sim /isaac-sim/extsUser
+USER isaac-sim
+RUN cd /isaac-sim/extsUser && \
+    git clone --branch v5.1.0 --depth 1 https://github.com/PegasusSimulator/PegasusSimulator.git && \
+    ln -s /isaac-sim/extsUser/PegasusSimulator/extensions/pegasus.simulator /isaac-sim/extsUser/pegasus.simulator
+
+# MAVSDK Python — pinned to spike's verified version.
+RUN pip3 install --user mavsdk==3.15.3
+
+# Spike helper scripts available at a stable path inside the container.
+USER root
+COPY --chown=isaac-sim:isaac-sim ./spike-scripts /opt/spike-scripts
+# === end Phase 2 ===
+
 USER isaac-sim:isaac-sim
 
 ENTRYPOINT ["/bin/bash"]
