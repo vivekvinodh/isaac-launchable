@@ -59,6 +59,9 @@ RUN echo 'source $HOME/.root-bashrc' >> /isaac-sim/.bashrc
 ENV DEBIAN_FRONTEND=noninteractive
 
 # PX4 SITL build deps (build-essential + cmake + git already installed above).
+# gcc-12: PX4 v1.14.3 uses uint8_t without #include <cstdint> in some files,
+# which GCC 13's stricter transitive-include policy rejects. gcc-12 still has
+# the lenient behavior the spike's Ubuntu 22.04 host build relied on.
 RUN apt update && apt install -y --no-install-recommends \
         ninja-build \
         libxml2-dev \
@@ -68,6 +71,8 @@ RUN apt update && apt install -y --no-install-recommends \
         python3-pip \
         python3-dev \
         python3-venv \
+        gcc-12 \
+        g++-12 \
     && rm -rf /var/lib/apt/lists/*
 
 # Upstream's `mkdir -p /home/isaac-sim/.cache/ov` creates the parent as root,
@@ -88,6 +93,9 @@ RUN sed -i 's/>=\([0-9.]*\)\.\*/>=\1/g' Tools/setup/requirements.txt
 # enforces PEP 668. Spike's host build worked on 22.04/3.10 without this flag.
 RUN pip3 install --user --break-system-packages "empy<4"
 RUN pip3 install --user --break-system-packages -r Tools/setup/requirements.txt
+# Force gcc-12 to avoid GCC 13's stricter transitive-include policy.
+ENV CC=gcc-12
+ENV CXX=g++-12
 # Build SITL binary only (no model arg — `make px4_sitl_default none_iris`
 # triggers respawn loop per spike errata #11).
 RUN make px4_sitl_default
