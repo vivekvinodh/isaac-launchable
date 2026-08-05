@@ -30,12 +30,12 @@ fi
 # connected against.) PX4 stdout/stderr to /tmp/px4.log so the cold-boot operator
 # can tail it. Skipped silently if the binary isn't present (e.g., during local
 # dev iteration without the full image build).
-PX4_BIN=/home/isaac-sim/PX4-Autopilot/build/px4_sitl_default/bin/px4
+PX4_BIN=/home/isaaclab/PX4-Autopilot/build/px4_sitl_default/bin/px4
 if [ -x "$PX4_BIN" ]; then
     PX4_SIM_MODEL=gazebo-classic_iris \
     "$PX4_BIN" \
-        /home/isaac-sim/PX4-Autopilot/ROMFS/px4fmu_common/ \
-        -s /home/isaac-sim/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/rcS \
+        /home/isaaclab/PX4-Autopilot/ROMFS/px4fmu_common/ \
+        -s /home/isaaclab/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/rcS \
         -i 0 -d > /tmp/px4.log 2>&1 &
     echo "PX4 launched in background, PID=$!" >&2
 fi

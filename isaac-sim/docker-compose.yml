@@ -28,7 +28,7 @@ volumes:
 services:
   isaac-sim:
     container_name: isaac-sim
-    image: nvcr.io/nvidia/isaac-sim:5.1.0
+    image: nvcr.io/nvidia/isaac-sim:6.0.1
     restart: unless-stopped
     runtime: nvidia
     network_mode: "host"

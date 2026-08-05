@@ -12,7 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM nvcr.io/nvidia/isaac-lab:2.3.0
+FROM nvcr.io/nvidia/isaac-lab:3.0.0-beta2-post1
+
+USER root
 
 RUN apt update && \
     apt install -y \
@@ -32,27 +34,26 @@ RUN apt update && \
 
 ENV WORKSPACE_DIR=/workspace
 
-COPY --chown=isaac-sim:isaac-sim ./README.md ${WORKSPACE_DIR}/README.md
-COPY --chown=isaac-sim:isaac-sim ./settings.json ${WORKSPACE_DIR}/.vscode/settings.json
+COPY --chown=isaaclab:isaaclab ./README.md ${WORKSPACE_DIR}/README.md
+COPY --chown=isaaclab:isaaclab ./settings.json ${WORKSPACE_DIR}/.vscode/settings.json
 
+USER isaaclab:isaaclab
 
 RUN code-server \
     --install-extension ms-python.python \
     --install-extension ms-toolsai.jupyter \
     --force ${WORKSPACE_DIR}
 
+USER root
+
 COPY entrypoint.sh /entrypoint.sh
 
 # OV Cache Directories
-RUN mkdir -p /home/isaac-sim/.cache/ov
-RUN mkdir -p /home/isaac-sim/.local/share/ov
+RUN mkdir -p /root/.cache/ov
+RUN mkdir -p /root/.local/share/ov
 
-# Fix permissions for ubuntu user
-RUN chown -R isaac-sim /workspace /home/isaac-sim/.cache/ov /home/isaac-sim/.local/share/ov /isaac-sim/kit/cache
-
-# Copy bashrc to get aliases
-RUN cp /root/.bashrc /isaac-sim/.root-bashrc
-RUN echo 'source $HOME/.root-bashrc' >> /isaac-sim/.bashrc
+# Fix permissions for isaaclab user
+RUN chown -R isaaclab:isaaclab /workspace /root/.cache/ov /root/.local/share/ov /isaac-sim/kit/cache
 
 # === Phase 2 — PX4 + Pegasus + MAVSDK + helper scripts ===
 # See infrastructure/launchable/DESIGN-NOTES.md in the spike repo for design rationale.
@@ -75,22 +76,21 @@ RUN apt update && apt install -y --no-install-recommends \
         g++-12 \
     && rm -rf /var/lib/apt/lists/*
 
-# Upstream's `mkdir -p /home/isaac-sim/.cache/ov` creates the parent as root,
-# and their subsequent `chown -R isaac-sim` only targets specific subpaths.
-# Without this fix, `git clone` as isaac-sim hits "Permission denied" in $HOME.
-RUN chown isaac-sim:isaac-sim /home/isaac-sim
+# Guarantee a writable home for the isaaclab user — the PX4 clone, the
+# pip --user installs, and the SITL build below all write under it.
+RUN mkdir -p /home/isaaclab && chown isaaclab:isaaclab /home/isaaclab
 
-USER isaac-sim
-WORKDIR /home/isaac-sim
+USER isaaclab
+WORKDIR /home/isaaclab
 
 RUN git clone --branch v1.14.3 --recursive --depth 1 https://github.com/PX4/PX4-Autopilot.git
 
-WORKDIR /home/isaac-sim/PX4-Autopilot
+WORKDIR /home/isaaclab/PX4-Autopilot
 # Spike errata #9 — modern pip rejects `>=N.M.*` in requirements.
 RUN sed -i 's/>=\([0-9.]*\)\.\*/>=\1/g' Tools/setup/requirements.txt
 # Spike errata #10 — PX4 uses em.RAW_OPT which empy 4.x removed.
-# --break-system-packages: base image is Ubuntu 24.04 / Python 3.12, which
-# enforces PEP 668. Spike's host build worked on 22.04/3.10 without this flag.
+# --break-system-packages: base image enforces PEP 668 (Ubuntu 24.04+).
+# Spike's host build worked on 22.04/3.10 without this flag.
 RUN pip3 install --user --break-system-packages "empy<4"
 RUN pip3 install --user --break-system-packages -r Tools/setup/requirements.txt
 # Force gcc-12 to avoid GCC 13's stricter transitive-include policy.
@@ -101,9 +101,12 @@ ENV CXX=g++-12
 RUN make px4_sitl_default
 
 # Pegasus v5.1.0 — clone into kit's auto-discovery path.
+# v5.1.0 is the newest Pegasus release and targets Isaac Sim 5.x; no Isaac
+# Sim 6.x release exists yet, so this pairing with the 3.0.0-beta2-post1
+# base (Isaac Sim 6.0.1) is unverified at runtime.
 USER root
-RUN mkdir -p /isaac-sim/extsUser && chown isaac-sim:isaac-sim /isaac-sim/extsUser
-USER isaac-sim
+RUN mkdir -p /isaac-sim/extsUser && chown isaaclab:isaaclab /isaac-sim/extsUser
+USER isaaclab
 RUN cd /isaac-sim/extsUser && \
     git clone --branch v5.1.0 --depth 1 https://github.com/PegasusSimulator/PegasusSimulator.git && \
     ln -s /isaac-sim/extsUser/PegasusSimulator/extensions/pegasus.simulator /isaac-sim/extsUser/pegasus.simulator
@@ -113,10 +116,10 @@ RUN pip3 install --user --break-system-packages mavsdk==3.15.3
 
 # Spike helper scripts available at a stable path inside the container.
 USER root
-COPY --chown=isaac-sim:isaac-sim ./spike-scripts /opt/spike-scripts
+COPY --chown=isaaclab:isaaclab ./spike-scripts /opt/spike-scripts
 # === end Phase 2 ===
 
-USER isaac-sim:isaac-sim
+USER isaaclab:isaaclab
 
 ENTRYPOINT ["/bin/bash"]
 

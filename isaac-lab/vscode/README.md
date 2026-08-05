@@ -18,20 +18,22 @@ See the [project repo](https://github.com/isaac-sim/isaac-launchable) for more d
 4. Enter URL: `/viewer/`
 5. The Isaac Sim UI will appear when the app is ready. The page will say "Waiting for stream..." until then.
 
-## Running Isaac Lab 2.3
+## Running Isaac Lab 3.0.0-beta2-post1
 
 You can run any of the Isaac Lab scripts with the streaming Isaac Sim experience with the following command:
 
 ```console
 cd /workspace/isaaclab
-./isaaclab.sh -p scripts/tutorials/00_sim/create_empty.py --livestream 2
+./isaaclab.sh -p scripts/tutorials/00_sim/create_empty.py --livestream 2 --viz kit
 ```
 
-To run any other Isaac Lab commands, simply append the same argument as shown above: `--livestream 2`.
+To run any other Isaac Lab commands, simply append the same argument as shown above: `--livestream 2 --viz kit`.
 
 Then follow the Web Viewer for Isaac Sim UI instructions, if not using headless mode.
 
-## Running Isaac Sim 5.1
+Note you **must** pass `--viz kit`.
+
+## Running Isaac Sim 6.0.1
 
 You can run the streaming Isaac Sim application at any time with the following command.
 

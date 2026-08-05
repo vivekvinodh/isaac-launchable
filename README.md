@@ -15,8 +15,8 @@ The installation steps for Isaac Lab are automated via Docker, such that it can 
 
 The project includes:
 - a Visual Studio Code container
-- Isaac Lab 2.3 container
-- Isaac Sim 5.1 container
+- Isaac Lab 3.0.0-beta2-post1 container
+- Isaac Sim 6.0.1 container
 - an Omniverse Kit App Streaming client, based on the [web-viewer-sample](https://github.com/NVIDIA-Omniverse/web-viewer-sample) project.
 
 
